@@ -180,7 +180,7 @@ export function useBrowser(): {
     async (input: string): Promise<void> => {
       if (!input.trim() || creating.current) return
       if (!window.api) {
-        reportError('请在 ebrower 桌面应用中打开网页。')
+        reportError('请在 ebrowser 桌面应用中打开网页。')
         return
       }
       creating.current = true

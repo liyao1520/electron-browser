@@ -2,6 +2,8 @@ import { useRef, useState, type FormEvent, type RefObject } from 'react'
 import type { BrowserTab } from '../../hooks/use-browser'
 import { IconButton } from './icon-button'
 import { BrowserIcon, type BrowserIconName } from './browser-icon'
+import type { UpdateState } from '../../../../shared/ipc'
+import { AppUpdate } from './app-update'
 
 export type Panel = 'menu' | 'bookmarks' | 'history' | 'downloads' | 'settings'
 
@@ -267,12 +269,16 @@ const panelInfo = {
 export function BrowserPanel({
   panel,
   version,
+  update,
+  onUpdateError,
   onPanel,
   onClose,
   onNew
 }: {
   panel: Panel
   version: string | null
+  update: UpdateState | null
+  onUpdateError: (error: unknown) => void
   onPanel: (panel: Panel) => void
   onClose: () => void
   onNew: () => void
@@ -341,9 +347,10 @@ export function BrowserPanel({
           </button>
         </div>
       )}
+      {panel === 'menu' && <AppUpdate state={update} onError={onUpdateError} />}
       <div className="panel-footer">
         <BrandMark />
-        <span>ebrower</span>
+        <span>ebrowser</span>
         {version && <span className="app-version">v{version}</span>}
       </div>
     </aside>

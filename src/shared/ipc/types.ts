@@ -5,6 +5,33 @@ export type AppRequests = {
   'app:getVersion': () => string
 }
 
+/** 只传输更新所需的数据，revision 防止初次查询覆盖较新的推送。 */
+export type UpdateState = {
+  revision: number
+  /** 开发测试只检查和下载，禁止手动安装及退出时自动安装。 */
+  testMode?: boolean
+  status:
+    | 'disabled'
+    | 'idle'
+    | 'checking'
+    | 'latest'
+    | 'available'
+    | 'downloading'
+    | 'downloaded'
+    | 'installing'
+    | 'error'
+  version?: string
+  percent?: number
+  message?: string
+}
+
+export type UpdateRequests = {
+  'update:getState': () => UpdateState
+  'update:check': () => void
+  'update:download': () => void
+  'update:install': () => void
+}
+
 export type WindowRequests = {
   'window:updateSize': (width: number, height: number) => void
   /** 仅调整网页显示区域；打开本地新标签页、错误页和侧栏时使用。 */
@@ -122,10 +149,11 @@ export type TabEvents = {
   'tab:stateChanged': (snapshot: TabSnapshot) => void
 }
 
-export type IpcRequests = AppRequests & WindowRequests & TabRequests
+export type IpcRequests = AppRequests & WindowRequests & TabRequests & UpdateRequests
 
 // 按实际业务添加事件，函数参数表示消息载荷；事件没有返回值。
 export type RendererToMainEvents = Record<never, never>
 export type MainToRendererEvents = TabEvents & {
   'browser:shortcut': (shortcut: BrowserShortcut) => void
+  'update:stateChanged': (state: UpdateState) => void
 }

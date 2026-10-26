@@ -17,7 +17,7 @@ require.extensions['.ts'] = (module, filename) => {
   module._compile(outputText, filename)
 }
 const { TabManager } = require('../src/main/tabs/tab-manager.ts')
-app.setPath('userData', mkdtempSync(join(tmpdir(), 'ebrower-tab-test-')))
+app.setPath('userData', mkdtempSync(join(tmpdir(), 'ebrowser-tab-test-')))
 // 最后一个隐藏窗口关闭后仍要完成资源释放断言，再由测试主动退出。
 app.on('window-all-closed', () => {})
 

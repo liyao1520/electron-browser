@@ -636,6 +636,38 @@ kbd {
   color: #a4acb7;
   margin: 0;
 }
+.app-update {
+  margin-bottom: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #edf0f5;
+}
+.app-update strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.app-update p {
+  margin: 8px 0 12px;
+  color: #778394;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.update-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 11px;
+}
+.update-actions {
+  display: flex;
+  gap: 8px;
+}
+.update-progress progress {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  accent-color: #477ee7;
+}
 .panel-footer {
   display: flex;
   align-items: center;

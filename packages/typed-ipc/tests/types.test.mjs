@@ -7,11 +7,11 @@ import { root } from './helpers.mjs'
 test('public declarations enforce namespace, context, protocol, direction and cleanup types', () => {
   const filename = path.join(root, 'tests/ipc-typecheck.ts')
   const source = `
-import { initIpcRouter, TypedIpcMain } from '@electron-brower/typed-ipc/main';
-import * as library from '@electron-brower/typed-ipc/main';
-import type { CreateIpcRouter, IpcMiddleware, IpcMiddlewareCall, IpcEventErrorHandler } from '@electron-brower/typed-ipc/main';
-import { TypedIpcRenderer } from '@electron-brower/typed-ipc/renderer';
-import type { Unsubscribe } from '@electron-brower/typed-ipc';
+import { initIpcRouter, TypedIpcMain } from '@electron-browser/typed-ipc/main';
+import * as library from '@electron-browser/typed-ipc/main';
+import type { CreateIpcRouter, IpcMiddleware, IpcMiddlewareCall, IpcEventErrorHandler } from '@electron-browser/typed-ipc/main';
+import { TypedIpcRenderer } from '@electron-browser/typed-ipc/renderer';
+import type { Unsubscribe } from '@electron-browser/typed-ipc';
 
 type Requests = {
   'app:version': () => string;

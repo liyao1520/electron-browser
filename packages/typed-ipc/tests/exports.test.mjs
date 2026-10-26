@@ -34,7 +34,7 @@ test('package exports resolve built JavaScript and keep main, renderer and type 
       )
       return module.exports
     }
-    const exports = load(require.resolve(`@electron-brower/typed-ipc${entry}`))
+    const exports = load(require.resolve(`@electron-browser/typed-ipc${entry}`))
     const relativeFiles = [...files.keys()].map((file) => file.split(path.sep).join('/'))
     if (!entry) {
       assert.deepEqual(Object.keys(exports), [])

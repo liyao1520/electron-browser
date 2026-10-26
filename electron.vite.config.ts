@@ -6,10 +6,10 @@ import svgr from 'vite-plugin-svgr'
 
 export default defineConfig({
   main: {
-    build: { externalizeDeps: { exclude: ['@electron-brower/typed-ipc'] } }
+    build: { externalizeDeps: { exclude: ['@electron-browser/typed-ipc'] } }
   },
   preload: {
-    build: { externalizeDeps: { exclude: ['@electron-brower/typed-ipc'] } }
+    build: { externalizeDeps: { exclude: ['@electron-browser/typed-ipc'] } }
   },
   renderer: {
     resolve: {

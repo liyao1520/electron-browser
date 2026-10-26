@@ -32,7 +32,7 @@ export function NewTabPage({
         <div className="wordmark">
           <BrandMark />
           <h1>
-            ebrower<span>.</span>
+            ebrowser<span>.</span>
           </h1>
         </div>
         <p className="start-description">让浏览，简单一点。</p>

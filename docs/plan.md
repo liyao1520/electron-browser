@@ -13,7 +13,7 @@
 
 - 已创建 electron-vite + React + TypeScript 项目，使用 pnpm。
 - 已接入 electron-builder、shadcn/ui 与 Tailwind CSS，保留最小应用首页。
-- 当前版本为 `1.0.1`，安装包通过 GitHub Releases（`liyao1520/electron-brower`）发布，appId 为 `com.liyao1520.ebrower`。
+- 当前版本为 `1.0.1`，安装包通过 GitHub Releases（`liyao1520/electron-browser`）发布，appId 为 `com.liyao1520.ebrowser`。
 - `BrowserWindow` 承载本地界面，每个网页标签使用一个 `WebContentsView`。
 - 主进程负责窗口、标签、会话、权限、下载、持久化与自动化。
 - preload 只向本地界面暴露必要的业务接口；renderer 负责显示状态与发出操作请求。

@@ -1,4 +1,4 @@
-# ebrower
+# ebrowser
 
 An Electron application with React and TypeScript
 
@@ -40,7 +40,7 @@ See [CI/CD setup and release instructions](docs/ci-cd.md).
 
 ### Typed IPC Library
 
-通用 IPC 能力位于独立 workspace 包 `@electron-brower/typed-ipc`。主进程从 `/main` 入口初始化 Router，preload 从 `/renderer` 入口调用；业务协议保留在 `src/shared/ipc`。
+通用 IPC 能力位于独立 workspace 包 `@electron-browser/typed-ipc`。主进程从 `/main` 入口初始化 Router，preload 从 `/renderer` 入口调用；业务协议保留在 `src/shared/ipc`。
 
 ```ts
 const context = { getWindowContext: resolveWindowContext }
@@ -81,6 +81,9 @@ $ pnpm install
 ```bash
 $ npm run dev
 ```
+
+Windows 下测试应用内更新：在一个终端运行 `pnpm update:serve`，另一个终端运行 `pnpm dev:update`，然后打开浏览器菜单进行检查和下载。
+开发测试不会安装更新；错误场景、真实更新源配置及自动化命令见 [开发更新测试说明](docs/ci-cd.md#windows-开发环境测试)。
 
 ### Build
 

@@ -1,8 +1,10 @@
-appId: com.liyao1520.ebrower
-productName: ebrower
+appId: com.liyao1520.ebrowser
+productName: ebrowser
 directories:
   buildResources: build
 files:
+  - '!dev-app-update.yml'
+  - '!scripts/**'
   - '!.github/**'
   - '!docs/**'
   - '!**/.vscode/*'
@@ -14,7 +16,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: ebrower
+  executableName: ebrowser
 nsis:
   differentialPackage: false
   artifactName: ${name}-${version}-setup.${ext}
@@ -41,6 +43,10 @@ linux:
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
-publish: null
+# builder 生成更新元数据；实际上传继续由 release.yml 统一处理。
+publish:
+  provider: github
+  owner: liyao1520
+  repo: electron-browser
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

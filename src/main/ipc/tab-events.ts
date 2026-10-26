@@ -1,6 +1,6 @@
 import type { WebContents } from 'electron'
 import type { BrowserShortcut } from '../../shared/browser-shortcuts'
-import { TypedIpcMain } from '@electron-brower/typed-ipc/main'
+import { TypedIpcMain } from '@electron-browser/typed-ipc/main'
 import type {
   IpcRequests,
   MainToRendererEvents,

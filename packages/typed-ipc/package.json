@@ -1,5 +1,5 @@
 {
-  "name": "@electron-brower/typed-ipc",
+  "name": "@electron-browser/typed-ipc",
   "version": "0.1.0",
   "private": true,
   "description": "Typed Electron IPC and modular routers with inferred application context",

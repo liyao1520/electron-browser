@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { BROWSER_PANEL_WIDTH, BROWSER_TOOLBAR_HEIGHT } from '../../shared/browser-layout'
 import { resolveBrowserShortcut, type BrowserShortcut } from '../../shared/browser-shortcuts'
+import type { UpdateState } from '../../shared/ipc'
 import { BrowserPanel, TabStrip, Toolbar, type Panel } from './components/browser/browser-chrome'
 import { IconButton } from './components/browser/icon-button'
 import { BrowserIcon } from './components/browser/browser-icon'
@@ -12,6 +13,7 @@ function App(): React.JSX.Element {
     useBrowser()
   const [panel, setPanel] = useState<Panel | null>(null)
   const [version, setVersion] = useState<string | null>(null)
+  const [update, setUpdate] = useState<UpdateState | null>(null)
   const addressRef = useRef<HTMLInputElement>(null)
   const page = activeTab.page
   const failed = page?.load.status === 'failed' || page?.load.status === 'crashed'
@@ -41,6 +43,25 @@ function App(): React.JSX.Element {
       .catch(reportError)
     return () => {
       disposed = true
+    }
+  }, [reportError])
+
+  useEffect(() => {
+    if (!window.api) return
+    let disposed = false
+    let revision = -1
+    const receive = (next: UpdateState): void => {
+      if (disposed || next.revision < revision) return
+      revision = next.revision
+      setUpdate(next)
+      if (next.status === 'available' || next.status === 'downloaded') setPanel('menu')
+    }
+    // 先订阅再查询，窗口重载后也能找回正在下载或等待安装的状态。
+    const unsubscribe = window.api.onUpdateStateChanged(receive)
+    void window.api.getUpdateState().then(receive).catch(reportError)
+    return () => {
+      disposed = true
+      unsubscribe()
     }
   }, [reportError])
 
@@ -137,6 +158,8 @@ function App(): React.JSX.Element {
           <BrowserPanel
             panel={panel}
             version={version}
+            update={update}
+            onUpdateError={reportError}
             onPanel={setPanel}
             onClose={() => setPanel(null)}
             onNew={newTab}

@@ -2,15 +2,15 @@
 
 独立的 Electron IPC 库，提供强类型请求、双向事件、按命名空间组织的 Router、全局与模块中间件，以及通过参数注入的应用上下文。库不依赖本项目的业务代码，也不管理窗口。
 
-当前作为 pnpm workspace 本地包 `@electron-brower/typed-ipc` 使用。它有自己的构建配置、JavaScript 和声明文件产物，以及测试；包设置为 private，未发布到 npm。
+当前作为 pnpm workspace 本地包 `@electron-browser/typed-ipc` 使用。它有自己的构建配置、JavaScript 和声明文件产物，以及测试；包设置为 private，未发布到 npm。
 
 ## 入口
 
-| 导入路径                              | 用途                                |
-| ------------------------------------- | ----------------------------------- |
-| `@electron-brower/typed-ipc`          | 通用类型，无 Electron 运行时导入    |
-| `@electron-brower/typed-ipc/main`     | 主进程 Router、`TypedIpcMain`       |
-| `@electron-brower/typed-ipc/renderer` | preload 中使用的 `TypedIpcRenderer` |
+| 导入路径                               | 用途                                |
+| -------------------------------------- | ----------------------------------- |
+| `@electron-browser/typed-ipc`          | 通用类型，无 Electron 运行时导入    |
+| `@electron-browser/typed-ipc/main`     | 主进程 Router、`TypedIpcMain`       |
+| `@electron-browser/typed-ipc/renderer` | preload 中使用的 `TypedIpcRenderer` |
 
 主进程和 preload 分别导入自己的入口。页面通过 preload 暴露的业务方法访问 IPC。
 
@@ -38,7 +38,7 @@ export type ToRenderer = {
 ```ts
 import { app } from 'electron'
 import type { BrowserWindow } from 'electron'
-import { initIpcRouter } from '@electron-brower/typed-ipc/main'
+import { initIpcRouter } from '@electron-browser/typed-ipc/main'
 import type { Requests, ToMain } from './contracts'
 
 let mainWindow: BrowserWindow | null = null
@@ -84,8 +84,8 @@ app.whenReady().then(() => {
 通过初始化参数配置全局中间件，使用 `router.use()` 追加模块中间件。两者都作用于 Router 的 `handle`、`handleOnce`、`on`、`once`。原来的 `initIpcRouter({ context })`、`.handle()` 和 `.register()` 写法继续可用。
 
 ```ts
-import { initIpcRouter } from '@electron-brower/typed-ipc/main'
-import type { IpcMiddleware } from '@electron-brower/typed-ipc/main'
+import { initIpcRouter } from '@electron-browser/typed-ipc/main'
+import type { IpcMiddleware } from '@electron-browser/typed-ipc/main'
 import type { Requests, ToMain } from './contracts'
 
 const context = { getMainWindow }
@@ -163,7 +163,7 @@ windowRouter.register()
 
 ```ts
 import { contextBridge } from 'electron'
-import { TypedIpcRenderer } from '@electron-brower/typed-ipc/renderer'
+import { TypedIpcRenderer } from '@electron-browser/typed-ipc/renderer'
 import type { Requests, ToMain, ToRenderer } from './contracts'
 
 const ipc = new TypedIpcRenderer<Requests, ToMain, ToRenderer>()
@@ -182,7 +182,7 @@ contextBridge.exposeInMainWorld('api', {
 主进程主动推送可以使用低层封装：
 
 ```ts
-import { TypedIpcMain } from '@electron-brower/typed-ipc/main'
+import { TypedIpcMain } from '@electron-browser/typed-ipc/main'
 import type { Requests, ToMain, ToRenderer } from './contracts'
 
 const ipc = new TypedIpcMain<Requests, ToMain, ToRenderer>()

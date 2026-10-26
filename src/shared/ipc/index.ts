@@ -1,6 +1,8 @@
 export type {
   IpcRequests,
   AppRequests,
+  UpdateState,
+  UpdateRequests,
   WindowRequests,
   TabRequests,
   TabId,

@@ -53,17 +53,36 @@ jobs:
       - name: Typecheck and build
         run: pnpm build
 
+      - name: Test IPC and updates
+        run: pnpm test:ipc
+
+      - name: Test development update feed
+        run: pnpm exec electron tests/updater.electron.cjs
+
       - name: Package Windows installer
         run: pnpm exec electron-builder --win nsis --x64 --publish never
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
-      - name: Upload installer
+      - name: Verify update metadata
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $channel = if ($version.Contains('-')) { $version.Split('-')[1].Split('.')[0] } else { 'latest' }
+          if (!(Test-Path -LiteralPath "dist/$channel.yml")) { throw 'Missing update metadata' }
+
+      - name: Upload installer and update metadata
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: windows-x64
-          path: dist/*-setup.exe
+          # 只上传安装包与各渠道更新文件，避免带入 builder 调试配置。
+          path: |
+            dist/*-setup.exe
+            dist/latest.yml
+            dist/alpha.yml
+            dist/beta.yml
+            dist/rc.yml
           if-no-files-found: error
           compression-level: 0
           retention-days: 14

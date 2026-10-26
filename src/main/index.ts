@@ -2,13 +2,14 @@ import { app, BrowserWindow } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { registerIpcRouters } from './ipc'
 import { createMainWindow } from './windows/main-window'
+import { initializeUpdates } from './updater'
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.liyao1520.ebrower')
+  electronApp.setAppUserModelId('com.liyao1520.ebrowser')
 
   registerIpcRouters()
 
@@ -20,6 +21,7 @@ app.whenReady().then(() => {
   })
 
   createMainWindow()
+  initializeUpdates()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

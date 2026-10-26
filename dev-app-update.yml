@@ -1,0 +1,5 @@
+# 仅由 pnpm dev:update 读取。安装版使用打包生成的 resources/app-update.yml。
+provider: generic
+url: http://127.0.0.1:8877/
+# 独立缓存，避免开发测试文件与正式更新包混用。
+updaterCacheDirName: ebrowser-dev-updater

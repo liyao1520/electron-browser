@@ -1,4 +1,4 @@
-import { initIpcRouter } from '@electron-brower/typed-ipc/main'
+import { initIpcRouter } from '@electron-browser/typed-ipc/main'
 import type { IpcRequests, RendererToMainEvents } from '../../shared/ipc'
 import { resolveWindowContext } from './resolve-window-context'
 import type { WindowIpcEvent } from './resolve-window-context'

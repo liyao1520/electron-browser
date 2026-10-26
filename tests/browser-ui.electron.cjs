@@ -7,8 +7,22 @@ const { tmpdir } = require('node:os')
 const { join } = require('node:path')
 const { createServer } = require('node:http')
 const { app, BrowserWindow, webContents } = require('electron')
+const { autoUpdater } = require('electron-updater')
 
-app.setPath('userData', mkdtempSync(join(tmpdir(), 'ebrower-ui-test-')))
+// 使用真实更新服务与 IPC，只替换联网、下载和安装，测试不会访问线上版本。
+Object.defineProperty(app, 'isPackaged', { get: () => true })
+autoUpdater.checkForUpdates = async () => {
+  autoUpdater.emit('update-not-available')
+  return null
+}
+autoUpdater.downloadUpdate = async () => {
+  autoUpdater.emit('download-progress', { percent: 42 })
+  return []
+}
+let installs = 0
+autoUpdater.quitAndInstall = () => installs++
+
+app.setPath('userData', mkdtempSync(join(tmpdir(), 'ebrowser-ui-test-')))
 // Test the actual built shell in a hidden window with an isolated profile.
 BrowserWindow.prototype.show = function () {
   // Keep this automated test from opening a visible application window.
@@ -101,6 +115,44 @@ async function run() {
   writeFileSync(join(__dirname, '../out/ui-menu-preview.png'), (await win.capturePage()).toPNG())
   await evaluate('document.querySelector("[aria-label=关闭侧栏]").click()')
 
+  autoUpdater.emit('update-available', { version: '99.0.0' })
+  await until(
+    () => evaluate('document.querySelector(".app-update button")?.textContent === "下载更新"'),
+    'new version opens the menu'
+  )
+  await evaluate('document.querySelector(".app-update button").click()')
+  await until(
+    () => evaluate('document.querySelector(".update-progress progress")?.value === 42'),
+    'update download progress'
+  )
+  assert.equal(await evaluate('document.querySelector(".app-update button").disabled'), true)
+  await settlePaint()
+  writeFileSync(join(__dirname, '../out/ui-update-preview.png'), (await win.capturePage()).toPNG())
+  autoUpdater.emit('error', new Error('simulated offline'))
+  await until(
+    () => evaluate('document.querySelector(".app-update button")?.textContent === "重试"'),
+    'failed update offers retry'
+  )
+  await evaluate('document.querySelector(".app-update button").click()')
+  await until(
+    () => evaluate('document.querySelector(".app-update p")?.textContent === "当前已是最新版本。"'),
+    'update retry'
+  )
+  autoUpdater.emit('update-available', { version: '99.0.0' })
+  await until(
+    () => evaluate('document.querySelector(".app-update button")?.textContent === "下载更新"'),
+    'new download available'
+  )
+  await evaluate('document.querySelector(".app-update button").click()')
+  autoUpdater.emit('update-downloaded', { version: '99.0.0' })
+  await until(
+    () => evaluate('document.querySelector(".app-update button")?.textContent === "重启并安装"'),
+    'update ready'
+  )
+  await evaluate('document.querySelector(".app-update button").click()')
+  await until(() => installs === 1, 'install requested through IPC')
+  await evaluate('document.querySelector("[aria-label=关闭侧栏]").click()')
+
   const origin = `http://127.0.0.1:${server.address().port}`
   // Use the actual search form and React change handler, rather than bypassing the UI via IPC.
   await evaluate(`(() => {
@@ -191,7 +243,7 @@ async function run() {
   assert.equal(native.isDestroyed(), true)
   assert.equal(await evaluate('Boolean(document.querySelector(".browser-notice"))'), false)
   console.log(
-    'Browser UI integration passed: rendering, search, native layout, tabs, shortcuts, failure, compact layout and cleanup.'
+    'Browser UI integration passed: updates, rendering, search, native layout, tabs, shortcuts, failure, compact layout and cleanup.'
   )
   win.destroy()
 }

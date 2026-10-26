@@ -17,16 +17,29 @@ function loadApplication({
   contextIsolated = true,
   platform = 'win32',
   isDev = false,
+  isPackaged = false,
+  argv = [],
   rendererUrl = 'http://localhost:5173/'
 } = {}) {
   const ipc = setup()
   const app = new EventEmitter()
+  app.isPackaged = isPackaged
   app.whenReady = () => Promise.resolve()
   app.getVersion = () => '1.2.3'
   app.quit = () => app.emit('will-quit')
   const windows = []
   const views = []
   const errors = []
+  const updateCalls = []
+  const updater = Object.assign(new EventEmitter(), {
+    checkForUpdates: async () => {
+      updateCalls.push('check')
+    },
+    downloadUpdate: async () => {
+      updateCalls.push('download')
+    },
+    quitAndInstall: () => updateCalls.push('install')
+  })
   class WebContentsView {
     constructor(options) {
       this.options = options
@@ -164,15 +177,18 @@ function loadApplication({
         module,
         __dirname: path.dirname(filename),
         process: {
+          argv,
           platform,
           env: isDev ? { ELECTRON_RENDERER_URL: rendererUrl } : {},
           contextIsolated
         },
         URL,
         structuredClone,
+        setImmediate,
         window: page,
         console: { ...console, error: (...args) => errors.push(args) },
         require: (name) => {
+          if (name === 'electron-updater') return { autoUpdater: updater }
           if (name === 'electron')
             return {
               app,
@@ -194,9 +210,9 @@ function loadApplication({
               is: { dev: isDev }
             }
           if (name === '@electron-toolkit/preload') return { electronAPI: {} }
-          if (name === '@electron-brower/typed-ipc/main')
+          if (name === '@electron-browser/typed-ipc/main')
             return ipc.load(path.join(libraryRoot, 'dist/main/index.js'))
-          if (name === '@electron-brower/typed-ipc/renderer')
+          if (name === '@electron-browser/typed-ipc/renderer')
             return ipc.load(path.join(libraryRoot, 'dist/renderer/index.js'))
           if (name === 'path' || name === 'node:path') return path
           if (name === 'node:url') return { pathToFileURL }
@@ -217,6 +233,8 @@ function loadApplication({
     windows,
     views,
     errors,
+    updater,
+    updateCalls,
     exposed,
     page,
     load,
@@ -239,6 +257,10 @@ for (const contextIsolated of [true, false]) {
       'tab:close',
       'tab:create',
       'tab:getState',
+      'update:check',
+      'update:download',
+      'update:getState',
+      'update:install',
       'window:updateBrowserLayout',
       'window:updateSize'
     ])
@@ -259,11 +281,155 @@ for (const contextIsolated of [true, false]) {
     assert.equal(env.windows.length, 2)
     await api.updateWindowSize(900, 600)
     assert.deepEqual(env.windows[1].sizes, [[900, 600]])
-    assert.equal(env.handlers.size, 7)
+    assert.equal(env.handlers.size, 11)
     env.windows[1].destroyed = true
     await assert.rejects(api.updateWindowSize(900, 600), /未登记或不可用/)
   })
 }
+
+test('updates are disabled outside packaged Windows apps', async () => {
+  for (const options of [
+    { isPackaged: false },
+    { isPackaged: true, platform: 'darwin' },
+    { platform: 'darwin', argv: ['--test-updates'] }
+  ]) {
+    const env = loadApplication(options)
+    env.load(path.join(root, 'src/main/index.ts'))
+    await Promise.resolve()
+    env.load(path.join(root, 'src/preload/index.ts'))
+    const api = env.exposed.api
+    await api.checkForUpdates()
+    await api.downloadUpdate()
+    await api.installUpdate()
+    assert.equal((await api.getUpdateState()).status, 'disabled')
+    assert.deepEqual(env.updateCalls, [])
+  }
+})
+
+test('development update testing uses its feed and never installs, including on quit', async () => {
+  const env = loadApplication({ isDev: true, argv: ['--test-updates'] })
+  env.load(path.join(root, 'src/main/index.ts'))
+  await Promise.resolve()
+  env.load(path.join(root, 'src/preload/index.ts'))
+  const api = env.exposed.api
+  assert.equal(env.updater.forceDevUpdateConfig, true)
+  assert.equal(env.updater.autoDownload, false)
+  assert.equal(env.updater.autoInstallOnAppQuit, false)
+  assert.equal((await api.getUpdateState()).testMode, true)
+  assert.deepEqual(env.updateCalls, ['check'])
+  env.updater.emit('update-available', { version: '999.0.0' })
+  await api.downloadUpdate()
+  env.updater.emit('download-progress', { percent: 42 })
+  assert.equal((await api.getUpdateState()).testMode, true)
+  env.updater.emit('update-downloaded', { version: '999.0.0' })
+  await api.installUpdate()
+  await new Promise(setImmediate)
+  assert.equal((await api.getUpdateState()).status, 'downloaded')
+  assert.deepEqual(env.updateCalls, ['check', 'download'])
+  await api.checkForUpdates()
+  assert.equal((await api.getUpdateState()).status, 'checking')
+  assert.deepEqual(env.updateCalls, ['check', 'download', 'check'])
+  env.updater.emit('error', new Error('test server offline'))
+  assert.equal((await api.getUpdateState()).testMode, true)
+  await api.checkForUpdates()
+  assert.deepEqual(env.updateCalls, ['check', 'download', 'check', 'check'])
+  assert.equal(env.updater.autoInstallOnAppQuit, false)
+})
+
+test('packaged apps ignore the development update flag', async () => {
+  const env = loadApplication({ isPackaged: true, argv: ['--test-updates'] })
+  env.load(path.join(root, 'src/main/index.ts'))
+  await Promise.resolve()
+  assert.equal(env.updater.forceDevUpdateConfig, false)
+  assert.equal(env.updater.autoInstallOnAppQuit, true)
+  assert.equal(
+    env.load(path.join(root, 'src/main/updater.ts')).getUpdateState().testMode,
+    undefined
+  )
+})
+
+test('update IPC guards each stage and preserves pending downloads across windows', async () => {
+  const env = loadApplication({ isPackaged: true })
+  env.load(path.join(root, 'src/main/index.ts'))
+  await Promise.resolve()
+  env.load(path.join(root, 'src/preload/index.ts'))
+  const api = env.exposed.api
+  assert.deepEqual(env.updateCalls, ['check'])
+  assert.equal(env.updater.autoDownload, false)
+  assert.equal(env.updater.autoInstallOnAppQuit, true)
+  assert.equal(env.updater.disableDifferentialDownload, true)
+  await api.checkForUpdates()
+  await api.downloadUpdate()
+  await api.installUpdate()
+  assert.deepEqual(env.updateCalls, ['check'])
+
+  const received = []
+  const unsubscribe = api.onUpdateStateChanged((state) => received.push(state))
+  env.updater.emit('update-available', { version: '1.3.0' })
+  await Promise.all([api.downloadUpdate(), api.downloadUpdate()])
+  await api.checkForUpdates()
+  assert.deepEqual(env.updateCalls, ['check', 'download'])
+  env.updater.emit('download-progress', { percent: 42 })
+  assert.equal(received.at(-1).percent, 42)
+
+  const { createMainWindow } = env.load(path.join(root, 'src/main/windows/main-window.ts'))
+  createMainWindow()
+  assert.equal((await api.getUpdateState()).status, 'downloading')
+  env.updater.emit('update-downloaded', { version: '1.3.0' })
+  const ready = await api.getUpdateState()
+  ready.status = 'idle'
+  assert.equal((await api.getUpdateState()).status, 'downloaded')
+  await api.checkForUpdates()
+  await api.installUpdate()
+  await api.installUpdate()
+  assert.deepEqual(env.updateCalls, ['check', 'download'])
+  await new Promise(setImmediate)
+  assert.deepEqual(env.updateCalls, ['check', 'download', 'install'])
+  assert.equal((await api.getUpdateState()).status, 'installing')
+  assert.ok(
+    received.every((state, index) => index === 0 || state.revision >= received[index - 1].revision)
+  )
+  unsubscribe()
+})
+
+test('update failures can be retried and untrusted callers cannot install', async () => {
+  const env = loadApplication({ isPackaged: true })
+  env.load(path.join(root, 'src/main/index.ts'))
+  await Promise.resolve()
+  env.load(path.join(root, 'src/preload/index.ts'))
+  const api = env.exposed.api
+  env.updater.emit('update-not-available')
+  env.updater.checkForUpdates = async () => {
+    const error = new Error('network unavailable')
+    env.updater.emit('error', error)
+    throw error
+  }
+  await api.checkForUpdates()
+  assert.equal((await api.getUpdateState()).status, 'error')
+  assert.equal(env.errors.length, 1)
+  env.updater.checkForUpdates = async () =>
+    env.updater.emit('update-available', { version: '1.3.0' })
+  await api.checkForUpdates()
+  env.updater.downloadUpdate = async () => {
+    throw new Error('download interrupted')
+  }
+  await api.downloadUpdate()
+  assert.equal((await api.getUpdateState()).status, 'error')
+  await api.checkForUpdates()
+  assert.equal((await api.getUpdateState()).status, 'available')
+  env.updater.emit('update-downloaded', { version: '1.3.0' })
+  env.mainEvent.senderFrame.url = 'https://untrusted.example/'
+  for (const invoke of [
+    api.getUpdateState,
+    api.checkForUpdates,
+    api.downloadUpdate,
+    api.installUpdate
+  ]) {
+    await assert.rejects(invoke(), /不受信任/)
+  }
+  await new Promise(setImmediate)
+  assert.equal(env.updateCalls.includes('install'), false)
+})
 
 test('closing an older window does not clear the current main window', () => {
   const env = loadApplication()
@@ -283,7 +449,7 @@ test('business router imports do not register handlers before the application mo
   const { registerIpcRouters } = env.load(path.join(root, 'src/main/ipc/index.ts'))
   assert.equal(env.handlers.size, 0)
   registerIpcRouters()
-  assert.equal(env.handlers.size, 7)
+  assert.equal(env.handlers.size, 11)
 })
 
 test('duplicate startup preserves the active business handlers', async () => {
@@ -291,7 +457,7 @@ test('duplicate startup preserves the active business handlers', async () => {
   const { registerIpcRouters } = env.load(path.join(root, 'src/main/ipc/index.ts'))
   registerIpcRouters()
   assert.throws(() => registerIpcRouters(), /already registered/)
-  assert.equal(env.handlers.size, 7)
+  assert.equal(env.handlers.size, 11)
   const { createMainWindow } = env.load(path.join(root, 'src/main/windows/main-window.ts'))
   createMainWindow()
   assert.equal(await env.renderer.invoke('app:getVersion'), '1.2.3')
@@ -1122,8 +1288,8 @@ if (process.env.IPC_TEST_BUNDLE === '1') {
       const preloadFile = path.join(root, 'out/preload/index.js')
       const mainSource = readFileSync(mainFile, 'utf8')
       const preloadSource = readFileSync(preloadFile, 'utf8')
-      assert.doesNotMatch(mainSource, /require\(["']@electron-brower\/typed-ipc/)
-      assert.doesNotMatch(preloadSource, /require\(["']@electron-brower\/typed-ipc/)
+      assert.doesNotMatch(mainSource, /require\(["']@electron-browser\/typed-ipc/)
+      assert.doesNotMatch(preloadSource, /require\(["']@electron-browser\/typed-ipc/)
       assert.doesNotMatch(mainSource, /TypedIpcRenderer/)
       assert.doesNotMatch(mainSource, /IpcRouterManager/)
       assert.doesNotMatch(preloadSource, /TypedIpcMain|IpcRouterManager/)

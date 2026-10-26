@@ -26,7 +26,7 @@ export function createMainWindow(): BrowserWindow {
     minWidth: 640,
     minHeight: 480,
     backgroundColor: '#ffffff',
-    title: 'ebrower',
+    title: 'ebrowser',
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#e9edf3', symbolColor: '#48515e', height: 42 },
     trafficLightPosition: { x: 14, y: 14 },
