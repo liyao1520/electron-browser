@@ -73,7 +73,7 @@ jobs:
           if (!(Test-Path -LiteralPath "dist/$channel.yml")) { throw 'Missing update metadata' }
 
       - name: Upload installer and update metadata
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-x64
           # 只上传安装包与各渠道更新文件，避免带入 builder 调试配置。
